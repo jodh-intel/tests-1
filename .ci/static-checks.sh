@@ -77,5 +77,38 @@ check_go()
 	eval gometalinter "${linter_args}" ./...
 }
 
+check_shell()
+{
+	local checkbashisms
+	local shellcheck
+
+	checkbashisms="$(command -v checkbashisms)"
+	shellcheck="$(command -v shellcheck)"
+
+	[ -z "$checkbashisms" ] && [ -z "$shellcheck" ] && return
+
+	local SHELLCHECK_OPTS=
+
+	# Ignore checking sourced files (they will be checked separately).
+	# (https://github.com/koalaman/shellcheck/wiki/SC1090)
+	SHELLCHECK_OPTS+=" -e SC1090"
+
+	# Don't require a shell to be specified for shell files that are only
+	# sourced.
+	# (https://github.com/koalaman/shellcheck/wiki/SC2148)
+	SHELLCHECK_OPTS+=" -e SC2148"
+
+	export SHELLCHECK_OPTS
+
+	# Note: we can't reliably check ".sh.in" files as they might not
+	# be valid shell (yet).
+	find . -name "*.sh" | grep -v "vendor/" | while read -r file
+	do
+		[ -n "$checkbashisms" ] && checkbashisms "$file"
+		[ -n "$shellcheck" ] && shellcheck "$file"
+	done
+}
+
 check_commits
+check_shell
 check_go
